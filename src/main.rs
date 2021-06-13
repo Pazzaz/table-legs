@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 type Table = [([bool; 6], usize); 6];
 
@@ -13,7 +13,7 @@ const ZERO_TABLE: Table = [
 ];
 
 fn main() {
-    let mut tables : HashSet<Table> = HashSet::new();
+    let mut tables : HashMap<Table, usize> = HashMap::new();
     let table: Table = [
         ([true,  false, false, false, false, false], 0),
         ([false, true,  false, false, false, false], 1),
@@ -22,39 +22,55 @@ fn main() {
         ([false, false, false, false, true,  false], 4),
         ([false, false, false, false, false, true ], 5),
     ];
-    traverse(table, &mut tables);
+    let mut around = Vec::new();
+    traverse(table, &mut tables, &mut around);
+    eprintln!("DONE!");
     println!("size: {}", tables.len());
+    println!("start: 0");
+    let mut sinks = 0;
+    for ve in &around {
+        if ve.len() == 0 { sinks += 1; }
+    }
+    println!("sinks: {}", sinks);
+    for (i, ve) in around.iter().enumerate() {
+        println!("{}:{:?}", i, ve);
+    }
     // println!("{:?}", tables);
 }
 
-fn traverse(current: Table, seen: &mut HashSet<Table>) {
-    seen.insert(current);
-    let mut unchecked = Vec::new();
-    unchecked.extend(neighbours(current));
+fn traverse(current: Table, seen: &mut HashMap<Table, usize>, around: &mut Vec<Vec<usize>>) {
+    seen.insert(current, 0);
+    around.push(Vec::new());
+    let mut unchecked = vec![current];
     let mut last = 0;
     loop {
         let n = match unchecked.pop() {
             Some(k) => k,
             None    => return,
         };
+        let mut around_n: Vec<usize> = Vec::new();
         let bors = neighbours(n);
         'outer: for mut b in bors {
             b.sort();
-            if seen.contains(&b) {
-                continue 'outer
-            }
             for mut symm in symmetries(b) {
                 symm.sort();
-                if seen.contains(&symm) {
-                    continue 'outer
+                if let Some(ind) = seen.get(&symm) {
+                    around_n.push(*ind);
+                    continue 'outer;
                 }
             }
-            seen.insert(b);
+            around_n.push(seen.len());
+            seen.insert(b, seen.len());
+            around.push(Vec::new());
             unchecked.push(b);
         }
+
+        let ind = seen.get(&n).unwrap();
+        around[*ind] = around_n;
+
         let le = seen.len();
         if le != last {
-            println!("seen: {}; unchecked: {}", le, unchecked.len());
+            eprintln!("seen: {}; unchecked: {}", le, unchecked.len());
             last = le;
         }
     }
@@ -152,8 +168,11 @@ fn transform(mut table: Table, new_pos: [usize; 6]) ->  Table {
 
 // The Automorphism group of the (2,3) King Graph is `PermutationGroup[{Cycles[{{2,5}}],Cycles[{{3,6}}],Cycles[{{1,3},{4,6}}]}]`
 // The order is 16
-fn symmetries(table: Table) ->  [Table; 15] {
-    let permutations:  [[usize; 6]; 15] = [
+// This includes the identity
+fn symmetries(table: Table) ->  [Table; 16] {
+    let permutations:  [[usize; 6]; 16] = [
+        [ 0,1,2,
+          3,4,5 ], // 1
         [ 3,1,2,
           0,4,5 ], // 2
         [ 0,4,2,
@@ -185,8 +204,8 @@ fn symmetries(table: Table) ->  [Table; 15] {
         [ 2,4,3,
           5,1,0 ], // 16
     ];
-    let mut symmetries = [ZERO_TABLE; 15];
-    for i in 0..15 {
+    let mut symmetries = [ZERO_TABLE; 16];
+    for i in 0..16 {
         let perm = permutations[i];
         let mut tab = table.clone();
         for i in 0..6 {
