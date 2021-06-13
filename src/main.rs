@@ -22,25 +22,35 @@ fn main() {
         ([false, false, false, false, true,  false], 4),
         ([false, false, false, false, false, true ], 5),
     ];
-    let mut around = Vec::new();
-    traverse(table, &mut tables, &mut around);
+    traverse(table, &mut tables);
     eprintln!("DONE!");
-    println!("size: {}", tables.len());
-    println!("start: 0");
-    let mut sinks = 0;
-    for ve in &around {
-        if ve.len() == 0 { sinks += 1; }
-    }
-    println!("sinks: {}", sinks);
-    for (i, ve) in around.iter().enumerate() {
-        println!("{}:{:?}", i, ve);
-    }
-    // println!("{:?}", tables);
 }
 
-fn traverse(current: Table, seen: &mut HashMap<Table, usize>, around: &mut Vec<Vec<usize>>) {
+fn counting(mut orig: Vec<usize>) -> Vec<(usize, usize)> {
+    orig.sort();
+    match orig.split_first() {
+        Some((head, tail)) => {
+            let mut curr: usize = *head;
+            let mut curr_count: usize = 1;
+            let mut acc = Vec::new();
+            for &n in tail {
+                if n == curr {
+                    curr_count += 1;
+                } else {
+                    acc.push((curr, curr_count));
+                    curr = n;
+                    curr_count = 1;
+                }
+            }
+            acc.push((curr, curr_count));
+            acc
+        },
+        None => Vec::new()
+    }
+}
+
+fn traverse(current: Table, seen: &mut HashMap<Table, usize>) {
     seen.insert(current, 0);
-    around.push(Vec::new());
     let mut unchecked = vec![current];
     let mut last = 0;
     loop {
@@ -61,12 +71,16 @@ fn traverse(current: Table, seen: &mut HashMap<Table, usize>, around: &mut Vec<V
             }
             around_n.push(seen.len());
             seen.insert(b, seen.len());
-            around.push(Vec::new());
             unchecked.push(b);
         }
 
         let ind = seen.get(&n).unwrap();
-        around[*ind] = around_n;
+        let sorted = counting(around_n);
+        print!("{}:", ind);
+        for (n, count) in sorted {
+            print!("({},{}),", n, count);
+        }
+        println!();
 
         let le = seen.len();
         if le != last {
