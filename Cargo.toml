@@ -7,3 +7,6 @@ edition = "2018"
 
 [dependencies]
 sprs = "0.10.0"
+rug = "1.12.0"
+ndarray = "0.14.0"
+num-traits = "0.2.14"

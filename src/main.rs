@@ -8,8 +8,16 @@ use std::io::BufWriter;
 use std::io::BufReader;
 use sprs::CsMat;
 use std::process::Command;
-
-
+use rug::Integer;
+use sprs::MulAcc;
+use std::ops::Deref;
+use std::ops::DerefMut;
+use std::str::FromStr;
+use ndarray::Array;
+use ndarray::linalg::Dot;
+use num_traits::identities::Zero;
+use std::ops::Add;
+use ndarray::Ix1;
 
 type Table = [([bool; 6], usize); 6];
 
@@ -25,18 +33,7 @@ const ZERO_TABLE: Table = [
 
 
 fn main() {
-    println!("PART 1");
-    running();
-    println!("PART 2");
-    sort_result();
-    println!("PART 3");
-    convert();
-
-    println!("PART 4");
-    create_start_vector();
-
-    println!("PART 5");
-    test_load();
+    repeat_mul();
 }
 
 fn sort_result() {
@@ -46,24 +43,73 @@ fn sort_result() {
         .expect("failed to execute process");
 }
 
+#[derive(Debug, Clone)]
+struct IntegerE(Integer);
 
+impl Deref for IntegerE {
+    type Target = Integer;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
 
-fn test_load() {
-    println!("LOADING DATA");
-    let rows    = get_numbers(&"final/row_index");
-    let columns = get_numbers(&"final/column_index");
-    let data    = get_numbers(&"final/values");
-    println!("LOADED!");
+impl DerefMut for IntegerE { fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 } }
 
-    let _m = CsMat::new((20109024, 20109024), rows, columns, data);
-    println!("GOT THE MATRIX");
+impl MulAcc for IntegerE { fn mul_acc(&mut self, a: &Self, b: &Self) { self.0 += &a.0 * &b.0; } }
+
+impl Zero for IntegerE {
+    #[inline]
+    fn zero() -> IntegerE { IntegerE(Integer::new()) }
+    #[inline]
+    fn is_zero(&self) -> bool { self.0 == Integer::new() }
+}
+
+impl Add for IntegerE {
+    type Output = Self;
+    fn add(self, other: Self) -> Self { IntegerE(self.0 + other.0) }
 }
 
 
-fn get_numbers(path: &str) -> Vec<usize> {
+
+fn repeat_mul() {
+    println!("LOADING DATA");
+    let rows    = get_numbers_usize(&"final/row_index");
+    let columns = get_numbers_usize(&"final/column_index");
+    let data    = get_numbers_integer(&"final/values");
+
+    println!("LOADED!");
+    
+    let m = CsMat::new((20109024, 20109024), rows, columns, data);
+    println!("Matrix created!");
+    
+    let vec1 = get_numbers_integer(&"vectors/0");
+    let mut vec = Array::from(vec1);
+    for i in 1..1000000 {
+        println!("STARTING {}", i);
+        vec = Dot::dot(&m, &vec);
+        println!("GOTTEM {} : {}", i, vec[448].0);
+        let path = format!("vectors/{}", i);
+        print_integers(&path, &vec);
+    }
+}
+
+fn print_integers(path: &str, list: &Array<IntegerE, Ix1>) {
+    let v = File::create(path).unwrap();
+    let mut f = BufWriter::new(v);
+    for n in list {
+        writeln!(f, "{}", n.0).unwrap();
+    }
+}
+
+
+fn get_numbers_usize(path: &str) -> Vec<usize> {
     let fr = File::open(path).unwrap();
     let br = BufReader::new(fr);
     br.lines().map(|line| line.unwrap().parse().unwrap()).collect()
+}
+
+fn get_numbers_integer(path: &str) -> Vec<IntegerE> {
+    let fr = File::open(path).unwrap();
+    let br = BufReader::new(fr);
+    br.lines().map(|line| IntegerE(Integer::from_str(&line.unwrap()).unwrap()) ).collect()
 }
 
 fn create_start_vector() {
