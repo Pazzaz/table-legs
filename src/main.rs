@@ -78,6 +78,7 @@ fn repeat_mul() {
     println!("LOADED!");
     
     let m = CsMat::new((20109024, 20109024), rows, columns, data);
+    m.transpose_mut();
     println!("Matrix created!");
     
     let vec1 = get_numbers_integer(&"vectors/0");
