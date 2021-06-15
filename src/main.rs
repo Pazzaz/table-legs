@@ -8,7 +8,7 @@ use std::io::BufWriter;
 use std::io::BufReader;
 use sprs::CsMat;
 use std::process::Command;
-use rug::Integer;
+use rug::Rational;
 use sprs::MulAcc;
 use std::ops::Deref;
 use std::ops::DerefMut;
@@ -18,7 +18,6 @@ use ndarray::linalg::Dot;
 use num_traits::identities::Zero;
 use std::ops::Add;
 use ndarray::Ix1;
-
 type Table = [([bool; 6], usize); 6];
 
 
@@ -44,27 +43,27 @@ fn sort_result() {
 }
 
 #[derive(Debug, Clone)]
-struct IntegerE(Integer);
+struct RationalE(Rational);
 
-impl Deref for IntegerE {
-    type Target = Integer;
+impl Deref for RationalE {
+    type Target = Rational;
     fn deref(&self) -> &Self::Target { &self.0 }
 }
 
-impl DerefMut for IntegerE { fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 } }
+impl DerefMut for RationalE { fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 } }
 
-impl MulAcc for IntegerE { fn mul_acc(&mut self, a: &Self, b: &Self) { self.0 += &a.0 * &b.0; } }
+impl MulAcc for RationalE { fn mul_acc(&mut self, a: &Self, b: &Self) { self.0 += Rational::from(&a.0 * &b.0); } }
 
-impl Zero for IntegerE {
+impl Zero for RationalE {
     #[inline]
-    fn zero() -> IntegerE { IntegerE(Integer::new()) }
+    fn zero() -> RationalE { RationalE(Rational::new()) }
     #[inline]
-    fn is_zero(&self) -> bool { self.0 == Integer::new() }
+    fn is_zero(&self) -> bool { self.0 == Rational::new() }
 }
 
-impl Add for IntegerE {
+impl Add for RationalE {
     type Output = Self;
-    fn add(self, other: Self) -> Self { IntegerE(self.0 + other.0) }
+    fn add(self, other: Self) -> Self { RationalE(self.0 + other.0) }
 }
 
 
@@ -73,7 +72,7 @@ fn repeat_mul() {
     println!("LOADING DATA");
     let rows    = get_numbers_usize(&"final/row_index");
     let columns = get_numbers_usize(&"final/column_index");
-    let data    = get_numbers_integer(&"final/values");
+    let data    = get_numbers_rational(&"final/values", 144);
 
     println!("LOADED!");
     
@@ -81,7 +80,7 @@ fn repeat_mul() {
     m.transpose_mut();
     println!("Matrix created!");
     
-    let vec1 = get_numbers_integer(&"vectors/0");
+    let vec1 = get_numbers_rational(&"vectors/0", 1);
     let mut vec = Array::from(vec1);
     for i in 1..1000000 {
         println!("STARTING {}", i);
@@ -92,7 +91,7 @@ fn repeat_mul() {
     }
 }
 
-fn print_integers(path: &str, list: &Array<IntegerE, Ix1>) {
+fn print_integers(path: &str, list: &Array<RationalE, Ix1>) {
     let v = File::create(path).unwrap();
     let mut f = BufWriter::new(v);
     for n in list {
@@ -107,10 +106,10 @@ fn get_numbers_usize(path: &str) -> Vec<usize> {
     br.lines().map(|line| line.unwrap().parse().unwrap()).collect()
 }
 
-fn get_numbers_integer(path: &str) -> Vec<IntegerE> {
+fn get_numbers_rational(path: &str, divide: u32) -> Vec<RationalE> {
     let fr = File::open(path).unwrap();
     let br = BufReader::new(fr);
-    br.lines().map(|line| IntegerE(Integer::from_str(&line.unwrap()).unwrap()) ).collect()
+    br.lines().map(|line| RationalE(Rational::from_str(&line.unwrap()).unwrap() / divide) ).collect()
 }
 
 fn create_start_vector() {
