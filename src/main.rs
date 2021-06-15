@@ -1,4 +1,15 @@
 use std::collections::HashMap;
+use std::fs::File;
+use std::fs;
+use std::io::{self, BufRead};
+use std::path::Path;
+use std::io::prelude::*;
+use std::io::BufWriter;
+use std::io::BufReader;
+use sprs::CsMat;
+use std::process::Command;
+
+
 
 type Table = [([bool; 6], usize); 6];
 
@@ -12,7 +23,102 @@ const ZERO_TABLE: Table = [
     ([false, false, false, false, false, false], 0),
 ];
 
+
 fn main() {
+    println!("PART 1");
+    running();
+    println!("PART 2");
+    sort_result();
+    println!("PART 3");
+    convert();
+
+    println!("PART 4");
+    create_start_vector();
+
+    println!("PART 5");
+    test_load();
+}
+
+fn sort_result() {
+    Command::new("sort")
+        .args(&["-n", "-o", "sorted_final", "full_final"])
+        .status()
+        .expect("failed to execute process");
+}
+
+
+
+fn test_load() {
+    println!("LOADING DATA");
+    let rows    = get_numbers(&"final/row_index");
+    let columns = get_numbers(&"final/column_index");
+    let data    = get_numbers(&"final/values");
+    println!("LOADED!");
+
+    let _m = CsMat::new((20109024, 20109024), rows, columns, data);
+    println!("GOT THE MATRIX");
+}
+
+
+fn get_numbers(path: &str) -> Vec<usize> {
+    let fr = File::open(path).unwrap();
+    let br = BufReader::new(fr);
+    br.lines().map(|line| line.unwrap().parse().unwrap()).collect()
+}
+
+fn create_start_vector() {
+    fs::create_dir_all("./vectors/").unwrap();
+    let v = File::create("./vectors/0").unwrap();
+    let mut vector = BufWriter::new(v);
+    for i in 0usize..20109024 {
+        if i == 0 {
+            writeln!(vector, "1").unwrap();
+        } else {
+            writeln!(vector, "0").unwrap();
+        }
+    }
+}
+
+fn convert() {
+    if let Ok(lines) = read_lines("./sorted_final") {
+        fs::create_dir_all("./final/").unwrap();
+
+        let v = File::create("./final/values").unwrap();
+        let mut values = BufWriter::new(v);
+        let c = File::create("./final/column_index").unwrap();
+        let mut column_index = BufWriter::new(c);
+        let r = File::create("./final/row_index").unwrap();
+        let mut row_index = BufWriter::new(r);
+
+        let mut got: usize = 0;
+        
+        for line in lines {
+            writeln!(row_index, "{}", got).unwrap();
+            if let Ok(ip) = line {
+                let parts: Vec<&str> = ip.split(':').collect();
+                let mut things: Vec<(usize, usize)> = parts[1].split("),").filter(|&s| s != "").map(|part| {
+                    let coords: Vec<&str> = part.trim_matches(|p| p == '(' || p == ')' )
+                                 .split(',')
+                                 .collect();
+                    let column: usize = coords[0].parse().unwrap();
+                    let value: usize = coords[1].parse().unwrap();
+                    (column, value)
+                }).collect();
+
+                things.sort();
+
+                for (column, value) in things {
+                    writeln!(values,       "{}", value).unwrap();
+                    writeln!(column_index, "{}", column).unwrap();
+                    got += 1;
+                }
+            }
+        }
+        writeln!(row_index, "{}", got).unwrap();
+    }
+}
+
+fn running() {
     let mut tables : HashMap<Table, usize> = HashMap::new();
     let table: Table = [
         ([true,  false, false, false, false, false], 0),
@@ -24,6 +130,13 @@ fn main() {
     ];
     traverse(table, &mut tables);
     eprintln!("DONE!");
+}
+
+
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where P: AsRef<Path>, {
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
 }
 
 fn counting(mut orig: Vec<usize>) -> Vec<(usize, usize)> {
@@ -50,6 +163,8 @@ fn counting(mut orig: Vec<usize>) -> Vec<(usize, usize)> {
 }
 
 fn traverse(current: Table, seen: &mut HashMap<Table, usize>) {
+    let f = File::create("full_final").unwrap();
+    let mut file = BufWriter::new(f);
     seen.insert(current, 0);
     let mut unchecked = vec![current];
     let mut last = 0;
@@ -76,11 +191,11 @@ fn traverse(current: Table, seen: &mut HashMap<Table, usize>) {
 
         let ind = seen.get(&n).unwrap();
         let sorted = counting(around_n);
-        print!("{}:", ind);
+        write!(file, "{}:", ind).unwrap();
         for (n, count) in sorted {
-            print!("({},{}),", n, count);
+            write!(file, "({},{}),", n, count).unwrap();
         }
-        println!();
+        writeln!(file).unwrap();
 
         let le = seen.len();
         if le != last {
