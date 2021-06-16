@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
+use std::fmt::Display;
 use std::fs;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -7,17 +8,11 @@ use std::io::prelude::*;
 use std::io::BufWriter;
 use std::io::BufReader;
 use sprs::CsMat;
+use sprs::TriMatBase;
 use std::process::Command;
-use rug::Rational;
-use sprs::MulAcc;
-use std::ops::Deref;
-use std::ops::DerefMut;
-use std::str::FromStr;
-use ndarray::Array;
-use ndarray::linalg::Dot;
-use num_traits::identities::Zero;
-use std::ops::Add;
-use ndarray::Ix1;
+use rug::Integer;
+use std::io::SeekFrom;
+
 type Table = [([bool; 6], usize); 6];
 
 
@@ -32,6 +27,19 @@ const ZERO_TABLE: Table = [
 
 
 fn main() {
+    // println!("PART 1");
+    // running();
+    // println!("PART 2");
+    // sort_result();
+    // println!("PART 3");
+    // convert();
+
+    // println!("PART 4");
+    // create_start_vector();
+
+    println!("PART 4");
+    let huehue = create_triple();
+    println!("PART 5");
     repeat_mul();
 }
 
@@ -42,62 +50,111 @@ fn sort_result() {
         .expect("failed to execute process");
 }
 
-#[derive(Debug, Clone)]
-struct RationalE(Rational);
 
-impl Deref for RationalE {
-    type Target = Rational;
-    fn deref(&self) -> &Self::Target { &self.0 }
+fn create_triple() {
+    let mut trip: TriMatBase<Vec<usize>, Vec<u8>> = TriMatBase::new((20109024, 20109024));
+    if let Ok(lines) = read_lines("./sorted_final") {
+        fs::create_dir_all("./final/").unwrap();
+        
+        for (row, line) in lines.enumerate() {
+            if let Ok(ip) = line {
+                let parts: Vec<&str> = ip.split(':').collect();
+                let mut things: Vec<(usize, u8)> = parts[1].split("),").filter(|&s| s != "").map(|part| {
+                    let coords: Vec<&str> = part.trim_matches(|p| p == '(' || p == ')' )
+                                 .split(',')
+                                 .collect();
+                    let column: usize = coords[0].parse().unwrap();
+                    let value: u8 = coords[1].parse().unwrap();
+                    (column, value)
+                }).collect();
+
+                things.sort();
+
+                for (column, value) in things {
+                    trip.add_triplet(row, column, value);
+                }
+            }
+        }
+    }
+
+    let (indptr, indices, data): (Vec<usize>, _, _) = trip.to_csc().into_raw_storage();
+
+    write_to_file(&"./final/indptr",  &indptr);
+    write_to_file(&"./final/indices", &indices);
+    write_to_file(&"./final/data",    &data);
 }
 
-impl DerefMut for RationalE { fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 } }
-
-impl MulAcc for RationalE { fn mul_acc(&mut self, a: &Self, b: &Self) { self.0 += Rational::from(&a.0 * &b.0); } }
-
-impl Zero for RationalE {
-    #[inline]
-    fn zero() -> RationalE { RationalE(Rational::new()) }
-    #[inline]
-    fn is_zero(&self) -> bool { self.0 == Rational::new() }
+fn write_to_file<T>(path: &str, list: &Vec<T>)
+where T : Display
+{
+    let v = File::create(path).unwrap();
+    let mut bw = BufWriter::new(v);
+    for l in list {
+        writeln!(bw, "{}", l).unwrap();
+    }
 }
-
-impl Add for RationalE {
-    type Output = Self;
-    fn add(self, other: Self) -> Self { RationalE(self.0 + other.0) }
-}
-
-
 
 fn repeat_mul() {
     println!("LOADING DATA");
-    let rows    = get_numbers_usize(&"final/row_index");
-    let columns = get_numbers_usize(&"final/column_index");
-    let data    = get_numbers_rational(&"final/values", 144);
+    let indptr        = get_numbers_usize(&"final/indptr");
+    let indices       = get_numbers_usize(&"final/indices");
+    let data: Vec<u8> = get_numbers_u8(&"final/data");
 
     println!("LOADED!");
     
-    let mut m = CsMat::new((20109024, 20109024), rows, columns, data);
+    let mut m = CsMat::new_csc((20109024, 20109024), indptr, indices, data);
     m.transpose_mut();
+    assert!(m.is_csr());
     println!("Matrix created!");
-    
-    let vec1 = get_numbers_rational(&"vectors/0", 1);
-    let mut vec = Array::from(vec1);
-    for i in 1..1000000 {
-        println!("STARTING {}", i);
-        vec = Dot::dot(&m, &vec);
-        println!("GOTTEM {} : {}", i, vec[448].0);
-        let path = format!("vectors/{}", i);
-        print_integers(&path, &vec);
+
+
+    let path = "vectors/0";
+
+    let mut positions: Vec<u64> = Vec::new();
+    let numbers = File::open(&path).unwrap();
+    let mut br_numbers = BufReader::new(numbers);
+    loop {
+        positions.push(br_numbers.stream_position().unwrap());
+        match br_numbers.read_until(b'\n', &mut Vec::new()) {
+            Ok(0) => break,
+            Ok(_) => {},
+            Err(e) => panic!("{}", e),
+        }
+    }
+        
+
+
+
+    let v = File::create("vectors/1").unwrap();
+    let mut f1 = BufWriter::new(v);
+
+    let mut last_row = 0;
+    let mut cur: Integer = Integer::new();
+    for (mat_v, (row, column)) in m.iter() {
+        // println!("HUEHUE");
+        // dbg!(mat_v, row, column, last_row, &cur);
+        if row != last_row {
+            // println!("PRINTING");
+            //println!("{}", cur);
+            writeln!(f1, "{}, {}", column, cur).unwrap();
+            cur = Integer::new();
+            last_row = row;
+        }
+        let vec_v = get_int(&mut br_numbers, column, &positions);
+        cur += vec_v * mat_v;
     }
 }
 
-fn print_integers(path: &str, list: &Array<RationalE, Ix1>) {
-    let v = File::create(path).unwrap();
-    let mut f = BufWriter::new(v);
-    for n in list {
-        writeln!(f, "{}", n.0).unwrap();
-    }
+fn get_int(file: &mut BufReader<File>, i: usize, positions: &Vec<u64>) -> Integer {
+    file.seek(SeekFrom::Start(positions[i])).unwrap();
+    let mut s = String::new();
+    file.read_line(&mut s).unwrap();
+    s.parse().unwrap()
 }
+
+
+
+
 
 
 fn get_numbers_usize(path: &str) -> Vec<usize> {
@@ -106,10 +163,10 @@ fn get_numbers_usize(path: &str) -> Vec<usize> {
     br.lines().map(|line| line.unwrap().parse().unwrap()).collect()
 }
 
-fn get_numbers_rational(path: &str, divide: u32) -> Vec<RationalE> {
+fn get_numbers_u8(path: &str) -> Vec<u8> {
     let fr = File::open(path).unwrap();
     let br = BufReader::new(fr);
-    br.lines().map(|line| RationalE(Rational::from_str(&line.unwrap()).unwrap() / divide) ).collect()
+    br.lines().map(|line| line.unwrap().parse().unwrap()).collect()
 }
 
 fn create_start_vector() {
