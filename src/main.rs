@@ -265,7 +265,8 @@ fn counting(mut orig: Vec<usize>) -> Vec<(usize, usize)> {
     }
 }
 
-fn traverse(current: Table, seen: &mut HashMap<Table, usize>) {
+fn traverse(mut current: Table, seen: &mut HashMap<Table, usize>) {
+    current.sort();
     let f = File::create("full_final").unwrap();
     let mut file = BufWriter::new(f);
     seen.insert(current, 0);
