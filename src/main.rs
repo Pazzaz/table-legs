@@ -270,7 +270,6 @@ fn traverse(mut current: Table, seen: &mut HashMap<Table, usize>) -> usize {
     let mut file = BufWriter::new(f);
     seen.insert(current, 0);
     let mut unchecked = vec![current];
-    let mut last = 0;
     loop {
         let n = match unchecked.pop() {
             Some(k) => k,
@@ -300,12 +299,6 @@ fn traverse(mut current: Table, seen: &mut HashMap<Table, usize>) -> usize {
             write!(file, "({},{}),", n, count).unwrap();
         }
         writeln!(file).unwrap();
-
-        let le = seen.len();
-        if le != last {
-            eprintln!("seen: {}; unchecked: {}", le, unchecked.len());
-            last = le;
-        }
     }
     count
 }
