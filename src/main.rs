@@ -27,20 +27,13 @@ const ZERO_TABLE: Table = [
 
 
 fn main() {
-    // println!("PART 1");
-    // running();
-    // println!("PART 2");
-    // sort_result();
-    // println!("PART 3");
-    // convert();
+    println!("PART 1");
+    running();
+    println!("PART 2");
+    sort_result();
 
-    // println!("PART 4");
-    // create_start_vector();
-
-    println!("PART 4");
-    let huehue = create_triple();
-    println!("PART 5");
-    repeat_mul();
+    println!("PART 3");
+    create_triple();
 }
 
 fn sort_result() {
@@ -108,40 +101,43 @@ fn repeat_mul() {
     println!("Matrix created!");
 
 
-    let path = "vectors/0";
-
-    let mut positions: Vec<u64> = Vec::new();
-    let numbers = File::open(&path).unwrap();
-    let mut br_numbers = BufReader::new(numbers);
-    loop {
-        positions.push(br_numbers.stream_position().unwrap());
-        match br_numbers.read_until(b'\n', &mut Vec::new()) {
-            Ok(0) => break,
-            Ok(_) => {},
-            Err(e) => panic!("{}", e),
+    for i in 0..200 {
+        let path1 = format!("vectors/{}", i);
+        let mut positions: Vec<u64> = Vec::new();
+        let numbers = File::open(&path1).unwrap();
+        let mut br_numbers = BufReader::new(numbers);
+        loop {
+            positions.push(br_numbers.stream_position().unwrap());
+            match br_numbers.read_until(b'\n', &mut Vec::new()) {
+                Ok(0) => break,
+                Ok(_) => {},
+                Err(e) => panic!("{}", e),
+            }
         }
-    }
-        
-
-
-
-    let v = File::create("vectors/1").unwrap();
-    let mut f1 = BufWriter::new(v);
-
-    let mut last_row = 0;
-    let mut cur: Integer = Integer::new();
-    for (mat_v, (row, column)) in m.iter() {
-        // println!("HUEHUE");
-        // dbg!(mat_v, row, column, last_row, &cur);
-        if row != last_row {
-            // println!("PRINTING");
-            //println!("{}", cur);
-            writeln!(f1, "{}, {}", column, cur).unwrap();
-            cur = Integer::new();
-            last_row = row;
+            
+    
+    
+    
+        let path2 = format!("vectors/{}", i+1);
+        let v = File::create(&path2).unwrap();
+        let mut f1 = BufWriter::new(v);
+    
+        let mut last_row = 0;
+        let mut cur: Integer = Integer::new();
+        for (mat_v, (row, column)) in m.iter() {
+            // println!("HUEHUE");
+            // dbg!(mat_v, row, column, last_row, &cur);
+            if row != last_row {
+                // println!("PRINTING");
+                //println!("{}", cur);
+                writeln!(f1, "{}", cur).unwrap();
+                cur = Integer::new();
+                last_row = row;
+            }
+            let vec_v = get_int(&mut br_numbers, column, &positions);
+            cur += vec_v * mat_v;
         }
-        let vec_v = get_int(&mut br_numbers, column, &positions);
-        cur += vec_v * mat_v;
+        writeln!(f1, "{}", cur).unwrap();
     }
 }
 
