@@ -28,12 +28,13 @@ const ZERO_TABLE: Table = [
 
 fn main() {
     println!("PART 1");
-    running();
+    let count = running();
+    println!("len: {}", count);
     println!("PART 2");
     sort_result();
 
     println!("PART 3");
-    create_triple();
+    create_triple(count);
 }
 
 fn sort_result() {
@@ -44,8 +45,8 @@ fn sort_result() {
 }
 
 
-fn create_triple() {
-    let mut trip: TriMatBase<Vec<usize>, Vec<u8>> = TriMatBase::new((20109024, 20109024));
+fn create_triple(count : usize) {
+    let mut trip: TriMatBase<Vec<usize>, Vec<u8>> = TriMatBase::new((count, count));
     if let Ok(lines) = read_lines("./sorted_final") {
         fs::create_dir_all("./final/").unwrap();
         
@@ -217,7 +218,7 @@ fn convert() {
     }
 }
 
-fn running() {
+fn running() -> usize {
     let mut tables : HashMap<Table, usize> = HashMap::new();
     let table: Table = [
         ([true,  false, false, false, false, false], 0),
@@ -227,8 +228,9 @@ fn running() {
         ([false, false, false, false, true,  false], 4),
         ([false, false, false, false, false, true ], 5),
     ];
-    traverse(table, &mut tables);
+    let count = traverse(table, &mut tables);
     eprintln!("DONE!");
+    count
 }
 
 
@@ -261,7 +263,8 @@ fn counting(mut orig: Vec<usize>) -> Vec<(usize, usize)> {
     }
 }
 
-fn traverse(mut current: Table, seen: &mut HashMap<Table, usize>) {
+fn traverse(mut current: Table, seen: &mut HashMap<Table, usize>) -> usize {
+    let mut count = 0;
     current.sort();
     let f = File::create("full_final").unwrap();
     let mut file = BufWriter::new(f);
@@ -271,8 +274,9 @@ fn traverse(mut current: Table, seen: &mut HashMap<Table, usize>) {
     loop {
         let n = match unchecked.pop() {
             Some(k) => k,
-            None    => return,
+            None    => break,
         };
+        count += 1;
         let mut around_n: Vec<usize> = Vec::new();
         let bors = neighbours(n);
         'outer: for mut b in bors {
@@ -303,6 +307,7 @@ fn traverse(mut current: Table, seen: &mut HashMap<Table, usize>) {
             last = le;
         }
     }
+    count
 }
 
 fn neighbours(table: Table) -> [Table; 144] {
