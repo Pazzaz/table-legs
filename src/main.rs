@@ -15,6 +15,7 @@ use std::io::SeekFrom;
 
 type Table = [([bool; 6], usize); 6];
 
+const LENGTH: usize = 20109023;
 
 const ZERO_TABLE: Table = [
     ([false, false, false, false, false, false], 0),
@@ -29,12 +30,17 @@ const ZERO_TABLE: Table = [
 fn main() {
     println!("PART 1");
     let count = running();
+    assert!(count == LENGTH);
     println!("len: {}", count);
     println!("PART 2");
     sort_result();
 
     println!("PART 3");
     create_triple(count);
+    println!("PART 4");
+    create_start_vector();
+    println!("PART 5");
+    repeat_mul()
 }
 
 fn sort_result() {
@@ -95,8 +101,7 @@ fn repeat_mul() {
     let data: Vec<u8> = get_numbers_u8(&"final/data");
 
     println!("LOADED!");
-    
-    let mut m = CsMat::new_csc((20109024, 20109024), indptr, indices, data);
+    let mut m = CsMat::new_csc((LENGTH, LENGTH), indptr, indices, data);
     m.transpose_mut();
     assert!(m.is_csr());
     println!("Matrix created!");
@@ -170,7 +175,7 @@ fn create_start_vector() {
     fs::create_dir_all("./vectors/").unwrap();
     let v = File::create("./vectors/0").unwrap();
     let mut vector = BufWriter::new(v);
-    for i in 0usize..20109024 {
+    for i in 0usize..LENGTH {
         if i == 0 {
             writeln!(vector, "1").unwrap();
         } else {
@@ -393,7 +398,7 @@ fn transform(mut table: Table, new_pos: [usize; 6]) ->  Table {
     return table
 }
 
-// The Automorphism group of the (2,3) King Graph is `PermutationGroup[{Cycles[{{2,5}}],Cycles[{{3,6}}],Cycles[{{1,3},{4,6}}]}]`
+// The Automorphism group is `PermutationGroup[{Cycles[{{2,5}}],Cycles[{{3,6}}],Cycles[{{1,3},{4,6}}]}]`
 // The order is 16
 // This includes the identity
 fn symmetries(table: Table) ->  [Table; 16] {
