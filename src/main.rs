@@ -77,6 +77,7 @@ fn create_triple(count : usize) {
         }
     }
 
+    // This is not done in place, RAM used will be around 90 GB
     let (indptr, indices, data): (Vec<usize>, _, _) = trip.to_csc().into_raw_storage();
 
     write_to_file(&"./final/indptr",  &indptr);
@@ -131,11 +132,7 @@ fn repeat_mul() {
         let mut last_row = 0;
         let mut cur: Integer = Integer::new();
         for (mat_v, (row, column)) in m.iter() {
-            // println!("HUEHUE");
-            // dbg!(mat_v, row, column, last_row, &cur);
             if row != last_row {
-                // println!("PRINTING");
-                //println!("{}", cur);
                 writeln!(f1, "{}", cur).unwrap();
                 cur = Integer::new();
                 last_row = row;
@@ -181,45 +178,6 @@ fn create_start_vector() {
         } else {
             writeln!(vector, "0").unwrap();
         }
-    }
-}
-
-fn convert() {
-    if let Ok(lines) = read_lines("./sorted_final") {
-        fs::create_dir_all("./final/").unwrap();
-
-        let v = File::create("./final/values").unwrap();
-        let mut values = BufWriter::new(v);
-        let c = File::create("./final/column_index").unwrap();
-        let mut column_index = BufWriter::new(c);
-        let r = File::create("./final/row_index").unwrap();
-        let mut row_index = BufWriter::new(r);
-
-        let mut got: usize = 0;
-        
-        for line in lines {
-            writeln!(row_index, "{}", got).unwrap();
-            if let Ok(ip) = line {
-                let parts: Vec<&str> = ip.split(':').collect();
-                let mut things: Vec<(usize, usize)> = parts[1].split("),").filter(|&s| s != "").map(|part| {
-                    let coords: Vec<&str> = part.trim_matches(|p| p == '(' || p == ')' )
-                                 .split(',')
-                                 .collect();
-                    let column: usize = coords[0].parse().unwrap();
-                    let value: usize = coords[1].parse().unwrap();
-                    (column, value)
-                }).collect();
-
-                things.sort();
-
-                for (column, value) in things {
-                    writeln!(values,       "{}", value).unwrap();
-                    writeln!(column_index, "{}", column).unwrap();
-                    got += 1;
-                }
-            }
-        }
-        writeln!(row_index, "{}", got).unwrap();
     }
 }
 
